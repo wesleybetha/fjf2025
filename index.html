@@ -128,183 +128,194 @@
 
     <!-- Firebase -->
     <script type="module">
-        
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
-        // --- PASSO 1: CONFIGURAÇÃO DO FIREBASE ---
-        // COLE A CONFIGURAÇÃO DO SEU PROJETO FIREBASE AQUI.
-        // Você encontra isso no Console do Firebase > Configurações do Projeto > Geral > Seus apps > App da Web.
-        const firebaseConfig = {
-            apiKey: "AIzaSyBt2mNX4xEvtcsIUC43G0GWn4o7Y6zY3YQ",
-            authDomain: "fjf2025.firebaseapp.com",
-            projectId: "fjf2025",
-            storageBucket: "fjf2025.firebasestorage.app",
-            messagingSenderId: "32649810273",
-            appId: "1:32649810273:web:baa912319639eed680f520",
-            measurementId: "G-95HFM078QJ"
-        };
+        // Função principal para encapsular a lógica e permitir o uso de `await`
+        async function main() {
+            // --- PASSO 1: CONFIGURAÇÃO DO FIREBASE ---
+            // COLE A CONFIGURAÇÃO DO SEU PROJETO FIREBASE AQUI.
+            // Você encontra isso no Console do Firebase > Configurações do Projeto > Geral > Seus apps > App da Web.
+            const firebaseConfig = {
+                apiKey: "AIzaSyBt2mNX4xEvtcsIUC43G0GWn4o7Y6zY3YQ",
+                authDomain: "fjf2025.firebaseapp.com",
+                projectId: "fjf2025",
+                storageBucket: "fjf2025.firebasestorage.app",
+                messagingSenderId: "32649810273",
+                appId: "1:32649810273:web:baa912319639eed680f520",
+            };
 
-        // --- PASSO 2: INSIRA O ID DO SEU APLICATIVO ---
-        // Este é o ID do app que você está usando (o mesmo que usou no caminho do Firestore).
-        // Exemplo: "1:1234567890:web:abcdef123456"
-        const appId = "1:32649810273:web:baa912319639eed680f520";
-        
-        // --- INICIALIZAÇÃO DO FIREBASE (NÃO ALTERAR DAQUI PARA BAIXO) ---
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
+            // --- PASSO 2: INSIRA O ID DO SEU APLICATIVO ---
+            // Este é o ID do app que você está usando (o mesmo que usou no caminho do Firestore).
+            // Exemplo: "1:1234567890:web:abcdef123456"
+            const appId = "1:32649810273:web:baa912319639eed680f520",
+            
+            // --- INICIALIZAÇÃO DO FIREBASE ---
+            const app = initializeApp(firebaseConfig);
+            const db = getFirestore(app);
+            const auth = getAuth(app);
 
-        // Autenticação anônima para permitir leitura do banco de dados
-        await signInAnonymously(auth);
+            try {
+                // Autenticação anônima para permitir leitura do banco de dados
+                await signInAnonymously(auth);
+            } catch (error) {
+                console.error("Erro na autenticação:", error);
+                // Encerra a execução se a autenticação falhar
+                return; 
+            }
 
-        const userId = auth.currentUser?.uid;
-        if (!userId) {
-            console.error("Autenticação anônima falhou.");
-            return;
-        }
-
-        const publicDataPath = `artifacts/${appId}/public/data`;
-
-        // RENDERIZAÇÃO DAS SEÇÕES
-
-        // 1. Classificação
-        const classificacaoBody = document.getElementById('classificacao-body');
-        const qClassificacao = query(collection(db, `${publicDataPath}/classificacao`), orderBy("posicao"));
-        onSnapshot(qClassificacao, (snapshot) => {
-            if (snapshot.empty) {
-                classificacaoBody.innerHTML = '<tr><td colspan="10" class="text-center p-4">Nenhum time na classificação ainda.</td></tr>';
+            const userId = auth.currentUser?.uid;
+            if (!userId) {
+                console.error("Autenticação anônima falhou.");
+                // Encerra a execução se não houver usuário
                 return;
             }
-            classificacaoBody.innerHTML = snapshot.docs.map(doc => {
-                const time = doc.data();
-                return `
-                    <tr class="border-b border-gray-700 hover:bg-gray-600">
-                        <td class="px-4 py-4 text-center font-medium">${time.posicao}</td>
-                        <td class="px-6 py-4 font-bold">${time.nome}</td>
-                        <td class="px-4 py-4 text-center font-bold">${time.pontos}</td>
-                        <td class="px-4 py-4 text-center">${time.jogos}</td>
-                        <td class="px-4 py-4 text-center">${time.vitorias}</td>
-                        <td class="px-4 py-4 text-center">${time.empates}</td>
-                        <td class="px-4 py-4 text-center">${time.derrotas}</td>
-                        <td class="px-4 py-4 text-center">${time.golsPro}</td>
-                        <td class="px-4 py-4 text-center">${time.golsContra}</td>
-                        <td class="px-4 py-4 text-center">${time.saldoGols}</td>
-                    </tr>
-                `;
-            }).join('');
-        });
 
-        // 2. Rodadas (Jogos)
-        const jogosContainer = document.getElementById('jogos-container');
-        const qRodadas = query(collection(db, `${publicDataPath}/rodadas`), orderBy("numero"));
-        onSnapshot(qRodadas, (snapshot) => {
-            if (snapshot.empty) {
-                document.getElementById('jogos-loading').textContent = 'Nenhuma rodada cadastrada.';
-                return;
-            }
-            const rodadas = snapshot.docs.map(doc => doc.data());
-            const slidesHTML = rodadas.map((rodada, index) => `
-                <div class="week-slide ${index !== 0 ? 'hidden' : ''} duration-700 ease-in-out w-full">
-                    <h3 class="text-xl font-bold text-center mb-4 text-gray-300">Rodada ${rodada.numero} - ${rodada.status}</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        ${rodada.jogos.map(jogo => `
-                            <div class="bg-gray-700 p-4 rounded-lg text-center">
-                                <p class="text-xs text-gray-400 mb-2">${jogo.data} - ${jogo.local}</p>
-                                <div class="flex items-center justify-center">
-                                    <span class="font-bold w-full text-right">${jogo.timeCasa}</span>
-                                    <span class="font-extrabold ${jogo.placarCasa !== null ? 'text-emerald-400' : 'text-gray-400'} text-xl mx-4 whitespace-nowrap">
-                                        ${jogo.placarCasa !== null ? `${jogo.placarCasa} - ${jogo.placarFora}` : 'VS'}
-                                    </span>
-                                    <span class="font-bold w-full text-left">${jogo.timeFora}</span>
+            const publicDataPath = `artifacts/${appId}/public/data`;
+
+            // RENDERIZAÇÃO DAS SEÇÕES
+
+            // 1. Classificação
+            const classificacaoBody = document.getElementById('classificacao-body');
+            const qClassificacao = query(collection(db, `${publicDataPath}/classificacao`), orderBy("posicao"));
+            onSnapshot(qClassificacao, (snapshot) => {
+                if (snapshot.empty) {
+                    classificacaoBody.innerHTML = '<tr><td colspan="10" class="text-center p-4">Nenhum time na classificação ainda.</td></tr>';
+                    return;
+                }
+                classificacaoBody.innerHTML = snapshot.docs.map(doc => {
+                    const time = doc.data();
+                    return `
+                        <tr class="border-b border-gray-700 hover:bg-gray-600">
+                            <td class="px-4 py-4 text-center font-medium">${time.posicao}</td>
+                            <td class="px-6 py-4 font-bold">${time.nome}</td>
+                            <td class="px-4 py-4 text-center font-bold">${time.pontos}</td>
+                            <td class="px-4 py-4 text-center">${time.jogos}</td>
+                            <td class="px-4 py-4 text-center">${time.vitorias}</td>
+                            <td class="px-4 py-4 text-center">${time.empates}</td>
+                            <td class="px-4 py-4 text-center">${time.derrotas}</td>
+                            <td class="px-4 py-4 text-center">${time.golsPro}</td>
+                            <td class="px-4 py-4 text-center">${time.golsContra}</td>
+                            <td class="px-4 py-4 text-center">${time.saldoGols}</td>
+                        </tr>
+                    `;
+                }).join('');
+            });
+
+            // 2. Rodadas (Jogos)
+            const jogosContainer = document.getElementById('jogos-container');
+            const qRodadas = query(collection(db, `${publicDataPath}/rodadas`), orderBy("numero"));
+            onSnapshot(qRodadas, (snapshot) => {
+                if (snapshot.empty) {
+                    document.getElementById('jogos-loading').textContent = 'Nenhuma rodada cadastrada.';
+                    return;
+                }
+                const rodadas = snapshot.docs.map(doc => doc.data());
+                const slidesHTML = rodadas.map((rodada, index) => `
+                    <div class="week-slide ${index !== 0 ? 'hidden' : ''} duration-700 ease-in-out w-full">
+                        <h3 class="text-xl font-bold text-center mb-4 text-gray-300">Rodada ${rodada.numero} - ${rodada.status}</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            ${rodada.jogos.map(jogo => `
+                                <div class="bg-gray-700 p-4 rounded-lg text-center">
+                                    <p class="text-xs text-gray-400 mb-2">${jogo.data} - ${jogo.local}</p>
+                                    <div class="flex items-center justify-center">
+                                        <span class="font-bold w-full text-right">${jogo.timeCasa}</span>
+                                        <span class="font-extrabold ${jogo.placarCasa !== null ? 'text-emerald-400' : 'text-gray-400'} text-xl mx-4 whitespace-nowrap">
+                                            ${jogo.placarCasa !== null ? `${jogo.placarCasa} - ${jogo.placarFora}` : 'VS'}
+                                        </span>
+                                        <span class="font-bold w-full text-left">${jogo.timeFora}</span>
+                                    </div>
                                 </div>
-                            </div>
-                        `).join('')}
+                            `).join('')}
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `).join('');
 
-            jogosContainer.innerHTML = `
-                <div id="slider-container" class="w-full">${slidesHTML}</div>
-                <button id="prev-btn" type="button" class="absolute top-0 left-0 z-30 flex items-center justify-center h-full px-4 cursor-pointer group focus:outline-none">
-                    <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/30 group-hover:bg-white/50"><svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 6 10"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 1 1 5l4 4"/></svg></span>
-                </button>
-                <button id="next-btn" type="button" class="absolute top-0 right-0 z-30 flex items-center justify-center h-full px-4 cursor-pointer group focus:outline-none">
-                    <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/30 group-hover:bg-white/50"><svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 6 10"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 9 4-4-4-4"/></svg></span>
-                </button>
-            `;
-            initializeSlider();
-        });
+                jogosContainer.innerHTML = `
+                    <div id="slider-container" class="w-full">${slidesHTML}</div>
+                    <button id="prev-btn" type="button" class="absolute top-0 left-0 z-30 flex items-center justify-center h-full px-4 cursor-pointer group focus:outline-none">
+                        <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/30 group-hover:bg-white/50"><svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 6 10"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 1 1 5l4 4"/></svg></span>
+                    </button>
+                    <button id="next-btn" type="button" class="absolute top-0 right-0 z-30 flex items-center justify-center h-full px-4 cursor-pointer group focus:outline-none">
+                        <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/30 group-hover:bg-white/50"><svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 6 10"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 9 4-4-4-4"/></svg></span>
+                    </button>
+                `;
+                initializeSlider();
+            });
 
-        function initializeSlider() {
-            const slides = document.querySelectorAll('.week-slide');
-            if(slides.length === 0) return;
+            function initializeSlider() {
+                const slides = document.querySelectorAll('.week-slide');
+                if(slides.length === 0) return;
 
-            const prevBtn = document.getElementById('prev-btn');
-            const nextBtn = document.getElementById('next-btn');
-            let currentSlide = 0;
+                const prevBtn = document.getElementById('prev-btn');
+                const nextBtn = document.getElementById('next-btn');
+                let currentSlide = 0;
 
-            const lastPlayedIndex = Array.from(slides).findIndex(s => s.querySelector('h3').textContent.includes('Próxima'));
-            currentSlide = lastPlayedIndex !== -1 ? lastPlayedIndex : 0;
+                const lastPlayedIndex = Array.from(slides).findIndex(s => s.querySelector('h3').textContent.includes('Próxima'));
+                currentSlide = lastPlayedIndex !== -1 ? lastPlayedIndex : 0;
 
-            function showSlide(index) {
-                slides.forEach((slide, i) => slide.classList.toggle('hidden', i !== index));
+                function showSlide(index) {
+                    slides.forEach((slide, i) => slide.classList.toggle('hidden', i !== index));
+                }
+
+                nextBtn.addEventListener('click', () => {
+                    currentSlide = (currentSlide + 1) % slides.length;
+                    showSlide(currentSlide);
+                });
+                prevBtn.addEventListener('click', () => {
+                    currentSlide = (currentSlide - 1 + slides.length) % slides.length;
+                    showSlide(currentSlide);
+                });
+
+                showSlide(currentSlide);
             }
 
-            nextBtn.addEventListener('click', () => {
-                currentSlide = (currentSlide + 1) % slides.length;
-                showSlide(currentSlide);
-            });
-            prevBtn.addEventListener('click', () => {
-                currentSlide = (currentSlide - 1 + slides.length) % slides.length;
-                showSlide(currentSlide);
+            // 3. Artilheiros
+            const artilheirosBody = document.getElementById('artilheiros-body');
+            const qArtilheiros = query(collection(db, `${publicDataPath}/artilheiros`), orderBy("posicao"));
+            onSnapshot(qArtilheiros, (snapshot) => {
+                if (snapshot.empty) {
+                    artilheirosBody.innerHTML = '<tr><td colspan="4" class="text-center p-4">Nenhum artilheiro cadastrado.</td></tr>';
+                    return;
+                }
+                artilheirosBody.innerHTML = snapshot.docs.map(doc => {
+                    const artilheiro = doc.data();
+                    return `
+                        <tr class="border-b border-gray-700 hover:bg-gray-600">
+                            <td class="px-4 py-4 text-center font-medium">${artilheiro.posicao}</td>
+                            <td class="px-6 py-4 font-bold">${artilheiro.jogador}</td>
+                            <td class="px-6 py-4">${artilheiro.clube}</td>
+                            <td class="px-4 py-4 text-center font-bold">${artilheiro.gols}</td>
+                        </tr>
+                    `;
+                }).join('');
             });
 
-            showSlide(currentSlide);
+            // 4. Assistências
+            const assistenciasBody = document.getElementById('assistencias-body');
+            const qAssistencias = query(collection(db, `${publicDataPath}/assistencias`), orderBy("posicao"));
+            onSnapshot(qAssistencias, (snapshot) => {
+                if (snapshot.empty) {
+                    assistenciasBody.innerHTML = '<tr><td colspan="4" class="text-center p-4">Nenhum líder de assistência cadastrado.</td></tr>';
+                    return;
+                }
+                assistenciasBody.innerHTML = snapshot.docs.map(doc => {
+                    const assistente = doc.data();
+                    return `
+                        <tr class="border-b border-gray-700 hover:bg-gray-600">
+                            <td class="px-4 py-4 text-center font-medium">${assistente.posicao}</td>
+                            <td class="px-6 py-4 font-bold">${assistente.jogador}</td>
+                            <td class="px-6 py-4">${assistente.clube}</td>
+                            <td class="px-4 py-4 text-center font-bold">${assistente.assistencias}</td>
+                        </tr>
+                    `;
+                }).join('');
+            });
         }
 
-        // 3. Artilheiros
-        const artilheirosBody = document.getElementById('artilheiros-body');
-        const qArtilheiros = query(collection(db, `${publicDataPath}/artilheiros`), orderBy("posicao"));
-        onSnapshot(qArtilheiros, (snapshot) => {
-            if (snapshot.empty) {
-                artilheirosBody.innerHTML = '<tr><td colspan="4" class="text-center p-4">Nenhum artilheiro cadastrado.</td></tr>';
-                return;
-            }
-            artilheirosBody.innerHTML = snapshot.docs.map(doc => {
-                const artilheiro = doc.data();
-                return `
-                    <tr class="border-b border-gray-700 hover:bg-gray-600">
-                        <td class="px-4 py-4 text-center font-medium">${artilheiro.posicao}</td>
-                        <td class="px-6 py-4 font-bold">${artilheiro.jogador}</td>
-                        <td class="px-6 py-4">${artilheiro.clube}</td>
-                        <td class="px-4 py-4 text-center font-bold">${artilheiro.gols}</td>
-                    </tr>
-                `;
-            }).join('');
-        });
-
-        // 4. Assistências
-        const assistenciasBody = document.getElementById('assistencias-body');
-        const qAssistencias = query(collection(db, `${publicDataPath}/assistencias`), orderBy("posicao"));
-        onSnapshot(qAssistencias, (snapshot) => {
-            if (snapshot.empty) {
-                assistenciasBody.innerHTML = '<tr><td colspan="4" class="text-center p-4">Nenhum líder de assistência cadastrado.</td></tr>';
-                return;
-            }
-            assistenciasBody.innerHTML = snapshot.docs.map(doc => {
-                const assistente = doc.data();
-                return `
-                    <tr class="border-b border-gray-700 hover:bg-gray-600">
-                        <td class="px-4 py-4 text-center font-medium">${assistente.posicao}</td>
-                        <td class="px-6 py-4 font-bold">${assistente.jogador}</td>
-                        <td class="px-6 py-4">${assistente.clube}</td>
-                        <td class="px-4 py-4 text-center font-bold">${assistente.assistencias}</td>
-                    </tr>
-                `;
-            }).join('');
-        });
+        // Executa a função principal para iniciar o site
+        main();
 
     </script>
 </body>
