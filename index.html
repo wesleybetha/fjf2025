@@ -135,26 +135,30 @@
         // Função principal para encapsular a lógica e permitir o uso de `await`
         async function main() {
             // --- PASSO 1: CONFIGURAÇÃO DO FIREBASE ---
-            // COLE A CONFIGURAÇÃO DO SEU PROJETO FIREBASE AQUI.
-            // Você encontra isso no Console do Firebase > Configurações do Projeto > Geral > Seus apps > App da Web.
+            // SUBSTITUA O BLOCO A SEGUIR pelo snippet de configuração do seu projeto Firebase.
+            // Você o encontra no Console do Firebase > Configurações do Projeto > Geral > Seus apps > App da Web.
             const firebaseConfig = {
+                // Cole seu snippet de configuração do Firebase aqui
                 apiKey: "AIzaSyBt2mNX4xEvtcsIUC43G0GWn4o7Y6zY3YQ",
                 authDomain: "fjf2025.firebaseapp.com",
                 projectId: "fjf2025",
                 storageBucket: "fjf2025.firebasestorage.app",
                 messagingSenderId: "32649810273",
-                appId: "1:32649810273:web:baa912319639eed680f520",
+                appId: "1:32649810273:web:baa912319639eed680f520"
             };
-
-            // --- PASSO 2: INSIRA O ID DO SEU APLICATIVO ---
-            // Este é o ID do app que você está usando (o mesmo que usou no caminho do Firestore).
-            // Exemplo: "1:1234567890:web:abcdef123456"
-            const appId = "1:32649810273:web:baa912319639eed680f520",
             
-            // --- INICIALIZAÇÃO DO FIREBASE ---
+            // --- INICIALIZAÇÃO DO FIREBASE (NÃO ALTERAR ABAIXO) ---
             const app = initializeApp(firebaseConfig);
             const db = getFirestore(app);
             const auth = getAuth(app);
+            
+            // O appId agora é pego diretamente da configuração que você colou acima.
+            const appId = firebaseConfig.appId;
+            if (!appId || appId.includes("SEU_APP_ID")) {
+                console.error("Erro: O 'appId' não foi configurado corretamente no objeto firebaseConfig.");
+                document.body.innerHTML = '<div style="color: red; text-align: center; padding-top: 50px; font-size: 24px;">Erro de Configuração: Verifique as credenciais do Firebase no arquivo HTML.</div>';
+                return;
+            }
 
             try {
                 // Autenticação anônima para permitir leitura do banco de dados
